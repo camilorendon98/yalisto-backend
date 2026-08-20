@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: yalisto-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: DATABASE_URL
+        sync: false # se pega aquí la cadena de conexión de Supabase cuando esté lista
