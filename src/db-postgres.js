@@ -13,9 +13,9 @@ const pool = new Pool({
 async function crearUsuario({ nombre, celular, ciudad, correo, permisos }) {
   const { rows } = await pool.query(
     `insert into usuarios (nombre, celular, ciudad, correo, permisos)
-     values ($1, $2, $3, $4, coalesce($5, default))
+     values ($1, $2, $3, $4, $5)
      returning *`,
-    [nombre, celular || null, ciudad || null, correo, permisos ? JSON.stringify(permisos) : null]
+    [nombre, celular || null, ciudad || null, correo, JSON.stringify(permisos)]
   );
   return rows[0];
 }
