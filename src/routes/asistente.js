@@ -74,6 +74,57 @@ function tituloRecordatorio(texto) {
     .replace(/^[,.;:\-\s]+|[,.;:\-\s]+$/g, '') || 'Recordatorio';
 }
 
+function accionesParaTexto(texto) {
+  const t = texto.toLowerCase();
+
+  if (/\bsoat\b/.test(t)) {
+    return [
+      {
+        etiqueta: '🛡️ Canales oficiales SOAT',
+        url: 'https://www.superfinanciera.gov.co/publicaciones/10115146/no-caiga-en-la-trampa-del-soat-falso/',
+        descripcion: 'Superfinanciera: canales autorizados y prevención de fraude',
+      },
+      {
+        etiqueta: '💰 Tarifas SOAT 2026',
+        url: 'https://www.superfinanciera.gov.co/publicaciones/10114908/soat/',
+        descripcion: 'Información oficial, tarifas y simulador',
+      },
+    ];
+  }
+
+  if (/cita|eps|salud|m[eé]dica/.test(t)) {
+    return [
+      {
+        etiqueta: '🏥 Consultar EPS',
+        url: 'https://www.minsalud.gov.co/Paginas/Consulta-Afiliados.aspx',
+        descripcion: 'Consulta oficial del Ministerio de Salud',
+      },
+    ];
+  }
+
+  if (/notar[ií]a|cerca|d[oó]nde|ubicaci[oó]n|direcci[oó]n/.test(t)) {
+    return [
+      {
+        etiqueta: '📍 Buscar en Maps',
+        url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(texto)}`,
+        descripcion: 'Abrir una búsqueda geográfica relacionada',
+      },
+    ];
+  }
+
+  if (/comprar|cotizar|precio|buscar|encontrar|conseguir|tr[aá]mite|tramite/.test(t)) {
+    return [
+      {
+        etiqueta: '🔎 Buscar opciones',
+        url: `https://www.google.com/search?q=${encodeURIComponent(texto)}`,
+        descripcion: 'Abrir resultados relacionados para continuar la gestión',
+      },
+    ];
+  }
+
+  return [];
+}
+
 function respuestaPorCategoria(categoria, nombre) {
   const saludo = nombre ? `${nombre}, ` : '';
   const mapa = {
@@ -128,11 +179,12 @@ router.post('/chat', async (req, res) => {
     if (!usuario) return res.status(404).json({ error: 'usuario no encontrado' });
 
     const nombre = primerNombre(usuario.nombre);
+    const acciones = accionesParaTexto(mensaje);
     const respuestaDatos = await responderConDatos(usuario, mensaje);
     if (respuestaDatos) {
       await pg.crearMensaje({ usuario_id, rol: 'user', contenido: mensaje });
       await pg.crearMensaje({ usuario_id, rol: 'assistant', contenido: respuestaDatos });
-      return res.json({ respuesta: respuestaDatos, accion: 'consulta', solicitud: null, recordatorio: null });
+      return res.json({ respuesta: respuestaDatos, accion: 'consulta', solicitud: null, recordatorio: null, acciones });
     }
 
     const { categoria, icono } = clasificar(mensaje);
@@ -161,6 +213,8 @@ router.post('/chat', async (req, res) => {
       } else {
         respuesta = `${nombre ? `${nombre}, ` : ''}te entendí. Necesito la fecha para dejar el recordatorio activo. Puedes decirme, por ejemplo, “mañana”, “el viernes” o una fecha.`;
       }
+    } else if (/\bsoat\b/i.test(mensaje)) {
+      respuesta = `${nombre ? `${nombre}, ` : ''}listo. Lo convertí en una misión de vehículo y te dejé accesos oficiales para revisar canales autorizados y tarifas del SOAT.`;
     } else {
       respuesta = respuestaPorCategoria(categoria, nombre);
     }
@@ -168,7 +222,13 @@ router.post('/chat', async (req, res) => {
     await pg.actualizarRespuestaSolicitud(solicitud.id, respuesta);
     await pg.crearMensaje({ usuario_id, solicitud_id: solicitud.id, rol: 'assistant', contenido: respuesta });
 
-    res.status(201).json({ respuesta, accion: recordatorio ? 'recordatorio_creado' : 'mision_creada', solicitud, recordatorio });
+    res.status(201).json({
+      respuesta,
+      accion: recordatorio ? 'recordatorio_creado' : 'mision_creada',
+      solicitud,
+      recordatorio,
+      acciones,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Yalisto no pudo procesar la solicitud' });
