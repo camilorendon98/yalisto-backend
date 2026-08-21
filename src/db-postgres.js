@@ -7,7 +7,7 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // Supabase exige SSL
+  ssl: { rejectUnauthorized: false },
 });
 
 async function crearUsuario({ nombre, celular, ciudad, correo, permisos }) {
@@ -21,7 +21,7 @@ async function crearUsuario({ nombre, celular, ciudad, correo, permisos }) {
 }
 
 async function buscarUsuarioPorCorreo(correo) {
-  const { rows } = await pool.query('select * from usuarios where correo = $1', [correo]);
+  const { rows } = await pool.query('select * from usuarios where lower(correo) = lower($1)', [correo]);
   return rows[0] || null;
 }
 
@@ -30,11 +30,11 @@ async function buscarUsuarioPorId(id) {
   return rows[0] || null;
 }
 
-async function crearSolicitud({ usuario_id, texto, categoria, icono }) {
+async function crearSolicitud({ usuario_id, texto, categoria, icono, titulo = null, prioridad = 'normal' }) {
   const { rows } = await pool.query(
-    `insert into solicitudes (usuario_id, texto, categoria, icono)
-     values ($1, $2, $3, $4) returning *`,
-    [usuario_id, texto, categoria, icono]
+    `insert into solicitudes (usuario_id, texto, categoria, icono, titulo, prioridad)
+     values ($1, $2, $3, $4, $5, $6) returning *`,
+    [usuario_id, texto, categoria, icono, titulo, prioridad]
   );
   return rows[0];
 }
@@ -58,6 +58,31 @@ async function actualizarEstadoSolicitud(id, estado) {
     [estado, id]
   );
   return rows[0] || null;
+}
+
+async function actualizarRespuestaSolicitud(id, respuesta) {
+  const { rows } = await pool.query(
+    `update solicitudes set respuesta = $1, actualizado_en = now() where id = $2 returning *`,
+    [respuesta, id]
+  );
+  return rows[0] || null;
+}
+
+async function crearMensaje({ usuario_id, solicitud_id = null, rol, contenido }) {
+  const { rows } = await pool.query(
+    `insert into mensajes (usuario_id, solicitud_id, rol, contenido)
+     values ($1, $2, $3, $4) returning *`,
+    [usuario_id, solicitud_id, rol, contenido]
+  );
+  return rows[0];
+}
+
+async function listarMensajes(usuario_id, limite = 80) {
+  const { rows } = await pool.query(
+    `select * from mensajes where usuario_id = $1 order by creado_en asc limit $2`,
+    [usuario_id, Math.max(1, Math.min(Number(limite) || 80, 200))]
+  );
+  return rows;
 }
 
 async function crearRecordatorio({ usuario_id, titulo, fecha, icono }) {
@@ -96,6 +121,9 @@ module.exports = {
   crearSolicitud,
   listarSolicitudes,
   actualizarEstadoSolicitud,
+  actualizarRespuestaSolicitud,
+  crearMensaje,
+  listarMensajes,
   crearRecordatorio,
   listarRecordatorios,
   listarRecordatoriosProximos,
