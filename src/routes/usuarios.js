@@ -5,7 +5,6 @@ const pg = require('../db-postgres');
 
 const router = express.Router();
 
-// POST /api/usuarios — registro (paso 1 y 2 del onboarding: datos + permisos)
 router.post('/', async (req, res) => {
   const { nombre, celular, ciudad, correo, permisos } = req.body || {};
 
@@ -27,15 +26,15 @@ router.post('/', async (req, res) => {
   try {
     if (pg.habilitado) {
       const existente = await pg.buscarUsuarioPorCorreo(correo);
-      if (existente) return res.status(409).json({ error: 'ya existe un usuario con ese correo', usuario: existente });
+      if (existente) return res.status(200).json({ usuario: existente, existente: true });
 
       const usuario = await pg.crearUsuario({ nombre, celular, ciudad, correo, permisos: permisosCompletos });
-      return res.status(201).json({ usuario });
+      return res.status(201).json({ usuario, existente: false });
     }
 
     const db = readDb();
-    const yaExiste = db.usuarios.find((u) => u.correo === correo);
-    if (yaExiste) return res.status(409).json({ error: 'ya existe un usuario con ese correo', usuario: yaExiste });
+    const yaExiste = db.usuarios.find((u) => String(u.correo).toLowerCase() === String(correo).toLowerCase());
+    if (yaExiste) return res.status(200).json({ usuario: yaExiste, existente: true });
 
     const usuario = {
       id: nanoid(10),
@@ -48,14 +47,13 @@ router.post('/', async (req, res) => {
     };
     db.usuarios.push(usuario);
     writeDb(db);
-    res.status(201).json({ usuario });
+    res.status(201).json({ usuario, existente: false });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'no se pudo registrar el usuario' });
   }
 });
 
-// GET /api/usuarios/:id
 router.get('/:id', async (req, res) => {
   try {
     if (pg.habilitado) {
