@@ -6,30 +6,33 @@ const usuariosRouter = require('./routes/usuarios');
 const solicitudesRouter = require('./routes/solicitudes');
 const recordatoriosRouter = require('./routes/recordatorios');
 const asistenteRouter = require('./routes/asistente');
+const vidaRouter = require('./routes/vida');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
 app.get('/', (req, res) => {
   res.json({
     ok: true,
     servicio: 'yalisto-backend',
-    version: '0.2.0',
-    mensaje: 'Yalisto está listo para recibir solicitudes.',
+    version: '0.3.0',
+    producto: 'agente-personal',
+    mensaje: 'Yalisto: memoria, contexto y ejecución personal.',
   });
 });
 
 app.get('/health', (req, res) => {
-  res.json({ ok: true, servicio: 'yalisto-backend', timestamp: new Date().toISOString() });
+  res.json({ ok: true, servicio: 'yalisto-backend', version: '0.3.0', timestamp: new Date().toISOString() });
 });
 
 app.use('/api/usuarios', usuariosRouter);
 app.use('/api/solicitudes', solicitudesRouter);
 app.use('/api/recordatorios', recordatoriosRouter);
 app.use('/api/asistente', asistenteRouter);
+app.use('/api/vida', vidaRouter);
 
 app.use((err, req, res, next) => {
   console.error(err);
