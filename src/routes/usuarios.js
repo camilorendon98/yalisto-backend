@@ -2,11 +2,12 @@ const express = require('express');
 const { nanoid } = require('nanoid');
 const { readDb, writeDb } = require('../db');
 const pg = require('../db-postgres');
+const legal = require('../legal');
 
 const router = express.Router();
 
 router.post('/', async (req, res) => {
-  const { nombre, celular, ciudad, correo, permisos } = req.body || {};
+  const { nombre, celular, ciudad, correo, permisos, consentimientos = [], legal_meta = {} } = req.body || {};
 
   if (!nombre || !correo) {
     return res.status(400).json({ error: 'nombre y correo son obligatorios' });
@@ -25,11 +26,22 @@ router.post('/', async (req, res) => {
 
   try {
     if (pg.habilitado) {
-      const existente = await pg.buscarUsuarioPorCorreo(correo);
-      if (existente) return res.status(200).json({ usuario: existente, existente: true });
+      let usuario = await pg.buscarUsuarioPorCorreo(correo);
+      const existente = Boolean(usuario);
+      if (!usuario) usuario = await pg.crearUsuario({ nombre, celular, ciudad, correo, permisos: permisosCompletos });
 
-      const usuario = await pg.crearUsuario({ nombre, celular, ciudad, correo, permisos: permisosCompletos });
-      return res.status(201).json({ usuario, existente: false });
+      let consentimientosGuardados = [];
+      if (Array.isArray(consentimientos) && consentimientos.length) {
+        consentimientosGuardados = await legal.registrarConsentimientos(usuario.id, consentimientos, {
+          jurisdiccion: legal_meta.jurisdiccion || 'CO',
+          version_app: legal_meta.version_app || null,
+          plataforma: legal_meta.plataforma || null,
+          locale: legal_meta.locale || null,
+          metodo:'checkbox_onboarding',
+          evidencia:{ origen:'registro_usuario' },
+        });
+      }
+      return res.status(existente ? 200 : 201).json({ usuario, existente, consentimientos:consentimientosGuardados });
     }
 
     const db = readDb();
