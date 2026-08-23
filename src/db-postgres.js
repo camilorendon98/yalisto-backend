@@ -132,6 +132,19 @@ async function listarCompromisos(usuario_id, estado = null, limite = 50) {
   return rows;
 }
 
+async function actualizarEstadoCompromiso(id, estado) {
+  const resuelto = estado === 'resuelto';
+  const { rows } = await pool.query(
+    `update compromisos
+     set estado = $1,
+         actualizado_en = now(),
+         resuelto_en = case when $2 then coalesce(resuelto_en, now()) else null end
+     where id = $3 returning *`,
+    [estado, resuelto, id]
+  );
+  return rows[0] || null;
+}
+
 async function guardarMemoria({ usuario_id, tipo, clave = null, titulo = null, valor = {}, fuente = 'usuario', confianza = 1, confirmado_por_usuario = true }) {
   const { rows } = await pool.query(
     `insert into memoria_items (usuario_id, tipo, clave, titulo, valor, fuente, confianza, confirmado_por_usuario)
@@ -200,6 +213,23 @@ async function listarEventosAgenda(usuario_id, desde, hasta) {
   return rows;
 }
 
+async function crearArchivoMetadata({ usuario_id, nombre, mime_type = null, tamano = null, storage_path = null, categoria = 'general', descripcion = null, fecha_documento = null, fecha_vencimiento = null, solicitud_id = null, compromiso_id = null, metadata = {} }) {
+  const { rows } = await pool.query(
+    `insert into archivos (usuario_id,nombre,mime_type,tamano,storage_path,categoria,descripcion,fecha_documento,fecha_vencimiento,solicitud_id,compromiso_id,metadata)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning *`,
+    [usuario_id,nombre,mime_type,tamano,storage_path,categoria,descripcion,fecha_documento,fecha_vencimiento,solicitud_id,compromiso_id,JSON.stringify(metadata)]
+  );
+  return rows[0];
+}
+
+async function listarArchivosMetadata(usuario_id, limite = 100) {
+  const { rows } = await pool.query(
+    `select * from archivos where usuario_id = $1 order by creado_en desc limit $2`,
+    [usuario_id, Math.max(1, Math.min(Number(limite) || 100, 300))]
+  );
+  return rows;
+}
+
 async function listarAccionesPendientes(usuario_id, limite = 20) {
   const { rows } = await pool.query(
     `select * from acciones_agente
@@ -237,6 +267,7 @@ module.exports = {
   listarRecordatoriosProximos,
   crearCompromiso,
   listarCompromisos,
+  actualizarEstadoCompromiso,
   guardarMemoria,
   listarMemoria,
   crearPersona,
@@ -245,6 +276,8 @@ module.exports = {
   listarVehiculos,
   crearEventoAgenda,
   listarEventosAgenda,
+  crearArchivoMetadata,
+  listarArchivosMetadata,
   listarAccionesPendientes,
   resumenVida,
 };
