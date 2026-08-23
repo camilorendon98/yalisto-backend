@@ -11,9 +11,7 @@ async function guardarEstadoAnimo({ usuario_id, estado, intensidad = 3, energia 
 
 async function obtenerEstadoAnimoHoy(usuario_id) {
   const { rows } = await pg.pool.query(
-    `select * from estados_animo
-     where usuario_id = $1 and fecha = current_date
-     order by creado_en desc limit 1`,
+    `select * from estados_animo where usuario_id = $1 and fecha = current_date order by creado_en desc limit 1`,
     [usuario_id]
   );
   return rows[0] || null;
@@ -21,27 +19,19 @@ async function obtenerEstadoAnimoHoy(usuario_id) {
 
 async function listarEstadosAnimo(usuario_id, limite = 14) {
   const { rows } = await pg.pool.query(
-    `select * from estados_animo where usuario_id = $1
-     order by creado_en desc limit $2`,
+    `select * from estados_animo where usuario_id = $1 order by creado_en desc limit $2`,
     [usuario_id, Math.max(1, Math.min(Number(limite) || 14, 60))]
   );
   return rows;
 }
 
 async function asegurarPreferencias(usuario_id) {
-  await pg.pool.query(
-    `insert into preferencias (usuario_id) values ($1)
-     on conflict (usuario_id) do nothing`,
-    [usuario_id]
-  );
+  await pg.pool.query(`insert into preferencias (usuario_id) values ($1) on conflict (usuario_id) do nothing`, [usuario_id]);
 }
 
 async function obtenerPreferencias(usuario_id) {
   await asegurarPreferencias(usuario_id);
-  const { rows } = await pg.pool.query(
-    `select * from preferencias where usuario_id = $1`,
-    [usuario_id]
-  );
+  const { rows } = await pg.pool.query(`select * from preferencias where usuario_id = $1`, [usuario_id]);
   return rows[0] || null;
 }
 
@@ -58,6 +48,13 @@ async function guardarPreferencias(usuario_id, cambios = {}) {
     voz_habilitada: cambios.voz_habilitada,
     manos_libres: cambios.manos_libres,
     activacion_por_nombre: cambios.activacion_por_nombre,
+    personalidad_asistente: cambios.personalidad_asistente,
+    presencia_asistente: cambios.presencia_asistente,
+    intensidad_notificaciones: cambios.intensidad_notificaciones,
+    sonidos_interfaz: cambios.sonidos_interfaz,
+    hapticos: cambios.hapticos,
+    animaciones: cambios.animaciones,
+    permisos_intervencion: cambios.permisos_intervencion,
   };
   const entradas = Object.entries(permitidos).filter(([, v]) => v !== undefined);
   if (!entradas.length) return obtenerPreferencias(usuario_id);
@@ -65,22 +62,15 @@ async function guardarPreferencias(usuario_id, cambios = {}) {
   const sets = [];
   const valores = [];
   entradas.forEach(([k, v]) => {
-    valores.push(v);
-    sets.push(`${k} = $${valores.length}`);
+    valores.push(k === 'permisos_intervencion' ? JSON.stringify(v) : v);
+    sets.push(`${k} = $${valores.length}${k === 'permisos_intervencion' ? '::jsonb' : ''}`);
   });
   valores.push(usuario_id);
   const { rows } = await pg.pool.query(
-    `update preferencias set ${sets.join(', ')}, actualizado_en = now()
-     where usuario_id = $${valores.length} returning *`,
+    `update preferencias set ${sets.join(', ')}, actualizado_en = now() where usuario_id = $${valores.length} returning *`,
     valores
   );
   return rows[0];
 }
 
-module.exports = {
-  guardarEstadoAnimo,
-  obtenerEstadoAnimoHoy,
-  listarEstadosAnimo,
-  obtenerPreferencias,
-  guardarPreferencias,
-};
+module.exports = { guardarEstadoAnimo, obtenerEstadoAnimoHoy, listarEstadosAnimo, obtenerPreferencias, guardarPreferencias };
