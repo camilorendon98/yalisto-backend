@@ -206,5 +206,35 @@ create table if not exists preferencias (
   resumen_diario boolean not null default true,
   hora_resumen time not null default '08:00',
   zona_horaria text not null default 'America/Bogota',
+  sombra_x numeric,
+  sombra_y numeric,
+  sombra_notificaciones boolean not null default true,
+  sombra_sonido boolean not null default true,
   actualizado_en timestamptz not null default now()
+);
+
+create table if not exists dispositivos (
+  id uuid primary key default gen_random_uuid(),
+  usuario_id uuid not null references usuarios(id) on delete cascade,
+  plataforma text not null check (plataforma in ('ios','android','web')),
+  expo_push_token text,
+  nombre_dispositivo text,
+  notificaciones_habilitadas boolean not null default true,
+  bubble_habilitada boolean not null default false,
+  ultimo_acceso timestamptz not null default now(),
+  creado_en timestamptz not null default now(),
+  unique(usuario_id, plataforma, expo_push_token)
+);
+
+create table if not exists notificaciones_agente (
+  id uuid primary key default gen_random_uuid(),
+  usuario_id uuid not null references usuarios(id) on delete cascade,
+  titulo text not null,
+  cuerpo text not null,
+  tipo text not null default 'general',
+  data jsonb not null default '{}'::jsonb,
+  leida boolean not null default false,
+  enviada boolean not null default false,
+  enviada_en timestamptz,
+  creado_en timestamptz not null default now()
 );
