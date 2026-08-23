@@ -1,7 +1,7 @@
 {
   "name": "yalisto-backend",
-  "version": "0.1.0",
-  "description": "API de arranque para Yalisto — usuarios, solicitudes (trámites) y recordatorios.",
+  "version": "0.4.0",
+  "description": "Backend del agente personal Yalisto: memoria, contexto, conversación, misiones y ejecución asistida.",
   "main": "src/index.js",
   "type": "commonjs",
   "scripts": {
