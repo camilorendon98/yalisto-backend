@@ -60,6 +60,10 @@ async function guardarPreferencias(usuario_id, cambios = {}) {
     voz_velocidad: cambios.voz_velocidad,
     voz_expresividad: cambios.voz_expresividad,
     voz_auto_estado: cambios.voz_auto_estado,
+    modo_descanso: cambios.modo_descanso,
+    tema_app: cambios.tema_app,
+    hora_descanso_inicio: cambios.hora_descanso_inicio,
+    hora_descanso_fin: cambios.hora_descanso_fin,
   };
   const entradas = Object.entries(permitidos).filter(([, v]) => v !== undefined);
   if (!entradas.length) return obtenerPreferencias(usuario_id);
