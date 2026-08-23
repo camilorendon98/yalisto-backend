@@ -57,9 +57,15 @@ create table if not exists personas (
   usuario_id uuid not null references usuarios(id) on delete cascade,
   nombre text not null,
   relacion text,
+  tipo_relacion text,
   telefono text,
   correo text,
   fecha_importante date,
+  fecha_nacimiento date,
+  apodo text,
+  trato_preferido text,
+  es_contacto_emergencia boolean not null default false,
+  favorito boolean not null default false,
   notas text,
   metadata jsonb not null default '{}'::jsonb,
   creado_en timestamptz not null default now(),
@@ -210,7 +216,25 @@ create table if not exists preferencias (
   sombra_y numeric,
   sombra_notificaciones boolean not null default true,
   sombra_sonido boolean not null default true,
+  chat_fondo text not null default 'crema',
+  interfaz text not null default 'calida',
+  densidad text not null default 'comoda',
+  estilo_respuesta text not null default 'equilibrado',
+  mostrar_animo_home boolean not null default true,
+  sombra_movil boolean not null default true,
   actualizado_en timestamptz not null default now()
+);
+
+create table if not exists estados_animo (
+  id uuid primary key default gen_random_uuid(),
+  usuario_id uuid not null references usuarios(id) on delete cascade,
+  estado text not null,
+  intensidad smallint not null default 3 check (intensidad between 1 and 5),
+  energia smallint not null default 3 check (energia between 1 and 5),
+  nota text,
+  ayuda_preferida text,
+  fecha date not null default current_date,
+  creado_en timestamptz not null default now()
 );
 
 create table if not exists dispositivos (
@@ -238,3 +262,6 @@ create table if not exists notificaciones_agente (
   enviada_en timestamptz,
   creado_en timestamptz not null default now()
 );
+
+create index if not exists personas_usuario_tipo_relacion_idx on personas(usuario_id, tipo_relacion);
+create index if not exists estados_animo_usuario_fecha_idx on estados_animo(usuario_id, fecha desc, creado_en desc);
