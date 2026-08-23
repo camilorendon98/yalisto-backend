@@ -169,17 +169,41 @@ async function listarMemoria(usuario_id, tipo = null, limite = 100) {
   return rows;
 }
 
-async function crearPersona({ usuario_id, nombre, relacion = null, telefono = null, correo = null, fecha_importante = null, notas = null, metadata = {} }) {
+async function crearPersona({
+  usuario_id,
+  nombre,
+  relacion = null,
+  tipo_relacion = null,
+  telefono = null,
+  correo = null,
+  fecha_importante = null,
+  fecha_nacimiento = null,
+  apodo = null,
+  trato_preferido = null,
+  es_contacto_emergencia = false,
+  favorito = false,
+  notas = null,
+  metadata = {},
+}) {
   const { rows } = await pool.query(
-    `insert into personas (usuario_id,nombre,relacion,telefono,correo,fecha_importante,notas,metadata)
-     values ($1,$2,$3,$4,$5,$6,$7,$8) returning *`,
-    [usuario_id,nombre,relacion,telefono,correo,fecha_importante,notas,JSON.stringify(metadata)]
+    `insert into personas (
+      usuario_id,nombre,relacion,tipo_relacion,telefono,correo,fecha_importante,fecha_nacimiento,
+      apodo,trato_preferido,es_contacto_emergencia,favorito,notas,metadata
+    ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning *`,
+    [
+      usuario_id,nombre,relacion,tipo_relacion,telefono,correo,fecha_importante,fecha_nacimiento,
+      apodo,trato_preferido,Boolean(es_contacto_emergencia),Boolean(favorito),notas,JSON.stringify(metadata)
+    ]
   );
   return rows[0];
 }
 
 async function listarPersonas(usuario_id) {
-  const { rows } = await pool.query('select * from personas where usuario_id = $1 order by nombre asc', [usuario_id]);
+  const { rows } = await pool.query(
+    `select * from personas where usuario_id = $1
+     order by favorito desc, es_contacto_emergencia desc, nombre asc`,
+    [usuario_id]
+  );
   return rows;
 }
 
