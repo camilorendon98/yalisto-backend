@@ -18,14 +18,22 @@ app.get('/', (req, res) => {
   res.json({
     ok: true,
     servicio: 'yalisto-backend',
-    version: '0.3.0',
+    version: '0.4.0',
     producto: 'agente-personal',
-    mensaje: 'Yalisto: memoria, contexto y ejecución personal.',
+    cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual' : 'local-contextual',
+    mensaje: 'Yalisto: memoria, contexto, anticipación y ejecución personal.',
   });
 });
 
 app.get('/health', (req, res) => {
-  res.json({ ok: true, servicio: 'yalisto-backend', version: '0.3.0', timestamp: new Date().toISOString() });
+  res.json({
+    ok: true,
+    servicio: 'yalisto-backend',
+    version: '0.4.0',
+    cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual' : 'local-contextual',
+    modelo: process.env.OPENAI_API_KEY ? (process.env.OPENAI_MODEL || 'gpt-5.6-luna') : null,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.use('/api/usuarios', usuariosRouter);
