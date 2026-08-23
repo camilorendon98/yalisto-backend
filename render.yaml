@@ -16,3 +16,15 @@ services:
         value: gpt-5.6-luna
       - key: OPENAI_TTS_MODEL
         value: gpt-4o-mini-tts
+      - key: LEGAL_ENTITY_NAME
+        sync: false
+      - key: LEGAL_ENTITY_NIT
+        sync: false
+      - key: LEGAL_ENTITY_CITY
+        sync: false
+      - key: LEGAL_ENTITY_ADDRESS
+        sync: false
+      - key: LEGAL_PRIVACY_EMAIL
+        sync: false
+      - key: LEGAL_SUPPORT_EMAIL
+        sync: false
