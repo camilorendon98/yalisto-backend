@@ -5,6 +5,29 @@ const pg = require('../db-postgres');
 const legal = require('../legal');
 
 const router = express.Router();
+const CONSENTIMIENTOS_OBLIGATORIOS = ['terminos', 'privacidad', 'autorizacion_datos'];
+
+function codigosAceptados(consentimientos = []) {
+  return new Set((Array.isArray(consentimientos) ? consentimientos : [])
+    .filter((c) => c && c.aceptado === true && c.codigo)
+    .map((c) => String(c.codigo)));
+}
+
+function faltantesRegistro(consentimientos = []) {
+  const aceptados = codigosAceptados(consentimientos);
+  return CONSENTIMIENTOS_OBLIGATORIOS.filter((codigo) => !aceptados.has(codigo));
+}
+
+function validarConsentimientoPrevio(consentimientos = []) {
+  const faltantes = faltantesRegistro(consentimientos);
+  if (!faltantes.length) return null;
+  return {
+    error: 'Antes de crear la cuenta debes aceptar los Términos y Condiciones, confirmar la Política de Privacidad y autorizar el tratamiento de datos personales.',
+    codigo: 'CONSENTIMIENTO_PREVIO_REQUERIDO',
+    faltantes,
+    sensibles_opcionales: true,
+  };
+}
 
 router.post('/', async (req, res) => {
   const { nombre, celular, ciudad, correo, permisos, consentimientos = [], legal_meta = {} } = req.body || {};
@@ -26,27 +49,44 @@ router.post('/', async (req, res) => {
 
   try {
     if (pg.habilitado) {
-      let usuario = await pg.buscarUsuarioPorCorreo(correo);
-      const existente = Boolean(usuario);
-      if (!usuario) usuario = await pg.crearUsuario({ nombre, celular, ciudad, correo, permisos: permisosCompletos });
-
-      let consentimientosGuardados = [];
-      if (Array.isArray(consentimientos) && consentimientos.length) {
-        consentimientosGuardados = await legal.registrarConsentimientos(usuario.id, consentimientos, {
-          jurisdiccion: legal_meta.jurisdiccion || 'CO',
-          version_app: legal_meta.version_app || null,
-          plataforma: legal_meta.plataforma || null,
-          locale: legal_meta.locale || null,
-          metodo:'checkbox_onboarding',
-          evidencia:{ origen:'registro_usuario' },
-        });
+      const existente = await pg.buscarUsuarioPorCorreo(correo);
+      if (existente) {
+        let consentimientosGuardados = [];
+        if (Array.isArray(consentimientos) && consentimientos.length) {
+          consentimientosGuardados = await legal.registrarConsentimientos(existente.id, consentimientos, {
+            jurisdiccion: legal_meta.jurisdiccion || 'CO',
+            version_app: legal_meta.version_app || null,
+            plataforma: legal_meta.plataforma || null,
+            locale: legal_meta.locale || null,
+            metodo:'checkbox_onboarding',
+            evidencia:{ origen:'registro_usuario_existente' },
+          });
+        }
+        return res.status(200).json({ usuario: existente, existente: true, consentimientos: consentimientosGuardados });
       }
-      return res.status(existente ? 200 : 201).json({ usuario, existente, consentimientos:consentimientosGuardados });
+
+      const problemaLegal = validarConsentimientoPrevio(consentimientos);
+      if (problemaLegal) return res.status(400).json(problemaLegal);
+
+      // Primero se verifica la aceptación; solo después se crea el registro de usuario.
+      const usuario = await pg.crearUsuario({ nombre, celular, ciudad, correo, permisos: permisosCompletos });
+      const consentimientosGuardados = await legal.registrarConsentimientos(usuario.id, consentimientos, {
+        jurisdiccion: legal_meta.jurisdiccion || 'CO',
+        version_app: legal_meta.version_app || null,
+        plataforma: legal_meta.plataforma || null,
+        locale: legal_meta.locale || null,
+        metodo:'checkbox_onboarding',
+        evidencia:{ origen:'registro_usuario', consentimiento_previo:true },
+      });
+      return res.status(201).json({ usuario, existente: false, consentimientos: consentimientosGuardados });
     }
 
     const db = readDb();
     const yaExiste = db.usuarios.find((u) => String(u.correo).toLowerCase() === String(correo).toLowerCase());
     if (yaExiste) return res.status(200).json({ usuario: yaExiste, existente: true });
+
+    const problemaLegal = validarConsentimientoPrevio(consentimientos);
+    if (problemaLegal) return res.status(400).json(problemaLegal);
 
     const usuario = {
       id: nanoid(10),
@@ -59,7 +99,7 @@ router.post('/', async (req, res) => {
     };
     db.usuarios.push(usuario);
     writeDb(db);
-    res.status(201).json({ usuario, existente: false });
+    res.status(201).json({ usuario, existente: false, consentimiento_previo: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'no se pudo registrar el usuario' });
