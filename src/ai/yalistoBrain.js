@@ -1,5 +1,6 @@
 const API_URL = 'https://api.openai.com/v1/responses';
 const personalizacion = require('../personalizacion');
+const pg = require('../db-postgres');
 
 const IDIOMAS = {
   'es-CO': 'español',
@@ -147,9 +148,11 @@ function compactarResumen(resumen = {}) {
 
 async function responderConCerebro({ usuario, mensaje, historial = [], resumen = {}, respuestaBase = '', hechos = {}, acciones = [] }) {
   const nombre = usuario?.nombre?.trim()?.split(/\s+/)[0] || '';
-  const [animo, preferencias] = await Promise.all([
+  const [animo, preferencias, personas, vehiculos] = await Promise.all([
     usuario?.id ? personalizacion.obtenerEstadoAnimoHoy(usuario.id).catch(() => null) : null,
     usuario?.id ? personalizacion.obtenerPreferencias(usuario.id).catch(() => null) : null,
+    usuario?.id ? pg.listarPersonas(usuario.id).catch(() => []) : [],
+    usuario?.id ? pg.listarVehiculos(usuario.id).catch(() => []) : [],
   ]);
   const idioma = preferencias?.idioma || 'es-CO';
 
@@ -171,7 +174,8 @@ async function responderConCerebro({ usuario, mensaje, historial = [], resumen =
     'Tu trabajo es convertir contexto en el siguiente paso útil: recordar, organizar, anticipar y ayudar a ejecutar.',
     'Nunca afirmes que pagaste, llamaste, enviaste, compraste, reservaste o ejecutaste algo si los HECHOS no dicen que ocurrió.',
     'Distingue claramente entre lo que ya quedó guardado, lo que propones y lo que requiere autorización del usuario.',
-    'Usa la memoria y los pendientes entregados; no inventes datos personales ausentes.',
+    'Usa la memoria, las personas guardadas, sus relaciones y los pendientes entregados; no inventes vínculos ni datos personales ausentes.',
+    'Si el usuario dice “mi mamá”, “mi pareja”, “mi cliente” o una relación similar, usa PERSONAS_GUARDADAS solo si existe una coincidencia clara.',
     'Si la conversación es casual, conversa con naturalidad y no fuerces una misión.',
     'Si falta un dato indispensable, pide solo el dato mínimo necesario.',
     'Cuando haya enlaces/acciones disponibles, puedes mencionarlos como opciones, pero no inventes URLs.',
@@ -188,6 +192,17 @@ async function responderConCerebro({ usuario, mensaje, historial = [], resumen =
     mensaje_actual: mensaje,
     conversacion_reciente: conversacion,
     contexto_personal: contexto,
+    personas_guardadas: (personas || []).slice(0, 25).map((p) => ({
+      nombre:p.nombre,
+      apodo:p.apodo,
+      tipo_relacion:p.tipo_relacion || p.relacion,
+      contacto_emergencia:p.es_contacto_emergencia,
+      favorito:p.favorito,
+      fecha_importante:p.fecha_importante,
+      fecha_nacimiento:p.fecha_nacimiento,
+      notas:p.notas,
+    })),
+    vehiculos_guardados: (vehiculos || []).slice(0, 10).map((v) => ({ placa:v.placa, marca:v.marca, linea:v.linea, modelo:v.modelo, soat_vence:v.soat_vence, tecnomecanica_vence:v.tecnomecanica_vence })),
     estado_de_hoy_autoreportado: animo ? { estado: animo.estado, intensidad: animo.intensidad, energia: animo.energia, nota: animo.nota, ayuda_preferida: animo.ayuda_preferida } : null,
     preferencias_de_interfaz_y_estilo: preferencias ? { interfaz: preferencias.interfaz, estilo_respuesta: preferencias.estilo_respuesta, chat_fondo: preferencias.chat_fondo } : null,
     hechos_confirmados_por_backend: hechos,
