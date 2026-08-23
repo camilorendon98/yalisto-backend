@@ -28,7 +28,16 @@ async function listarEstadosAnimo(usuario_id, limite = 14) {
   return rows;
 }
 
+async function asegurarPreferencias(usuario_id) {
+  await pg.pool.query(
+    `insert into preferencias (usuario_id) values ($1)
+     on conflict (usuario_id) do nothing`,
+    [usuario_id]
+  );
+}
+
 async function obtenerPreferencias(usuario_id) {
+  await asegurarPreferencias(usuario_id);
   const { rows } = await pg.pool.query(
     `select * from preferencias where usuario_id = $1`,
     [usuario_id]
@@ -37,7 +46,9 @@ async function obtenerPreferencias(usuario_id) {
 }
 
 async function guardarPreferencias(usuario_id, cambios = {}) {
+  await asegurarPreferencias(usuario_id);
   const permitidos = {
+    idioma: cambios.idioma,
     chat_fondo: cambios.chat_fondo,
     interfaz: cambios.interfaz,
     densidad: cambios.densidad,
@@ -50,12 +61,6 @@ async function guardarPreferencias(usuario_id, cambios = {}) {
   };
   const entradas = Object.entries(permitidos).filter(([, v]) => v !== undefined);
   if (!entradas.length) return obtenerPreferencias(usuario_id);
-
-  await pg.pool.query(
-    `insert into preferencias (usuario_id) values ($1)
-     on conflict (usuario_id) do nothing`,
-    [usuario_id]
-  );
 
   const sets = [];
   const valores = [];
