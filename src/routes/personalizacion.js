@@ -1,6 +1,7 @@
 const express = require('express');
 const pg = require('../db-postgres');
 const personalizacion = require('../personalizacion');
+const { VOICE_LIST } = require('../voice-presets');
 
 const router = express.Router();
 
@@ -14,6 +15,14 @@ const CATALOGOS = {
     { codigo:'it-IT', nombre:'Italiano', icono:'🇮🇹' },
     { codigo:'zh-CN', nombre:'中文', icono:'🇨🇳' },
     { codigo:'ja-JP', nombre:'日本語', icono:'🇯🇵' },
+  ],
+  voces: VOICE_LIST,
+  expresividad_voz: [
+    { codigo:'suave', etiqueta:'Suave', descripcion:'Más calmada y contenida' },
+    { codigo:'natural', etiqueta:'Natural', descripcion:'Conversación cotidiana' },
+    { codigo:'expresiva', etiqueta:'Expresiva', descripcion:'Más variación e intención' },
+    { codigo:'energico', etiqueta:'Enérgica', descripcion:'Más viva y dinámica' },
+    { codigo:'sereno', etiqueta:'Serena', descripcion:'Estable y tranquila' },
   ],
   estados_animo: [
     { codigo:'tranquilo', etiqueta:'Tranquilo', icono:'😌' },
