@@ -73,9 +73,12 @@ async function crearMensaje({ usuario_id, solicitud_id = null, rol, contenido })
 }
 
 async function listarMensajes(usuario_id, limite = 80) {
+  const max = Math.max(1, Math.min(Number(limite) || 80, 200));
   const { rows } = await pool.query(
-    `select * from mensajes where usuario_id = $1 order by creado_en asc limit $2`,
-    [usuario_id, Math.max(1, Math.min(Number(limite) || 80, 200))]
+    `select * from (
+       select * from mensajes where usuario_id = $1 order by creado_en desc limit $2
+     ) recientes order by creado_en asc`,
+    [usuario_id, max]
   );
   return rows;
 }
