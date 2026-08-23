@@ -9,6 +9,7 @@ const asistenteRouter = require('./routes/asistente');
 const vidaRouter = require('./routes/vida');
 const personalizacionRouter = require('./routes/personalizacion');
 const analisisRouter = require('./routes/analisis');
+const vozRouter = require('./routes/voz');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,10 +21,11 @@ app.get('/', (req, res) => {
   res.json({
     ok: true,
     servicio: 'yalisto-backend',
-    version: '0.6.0',
+    version: '0.7.0',
     producto: 'agente-personal-sombra-digital',
     cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual' : 'local-contextual',
-    mensaje: 'Yalisto: memoria, contexto, análisis personal, anticipación y ejecución.',
+    voz: process.env.OPENAI_API_KEY ? 'natural-openai-tts' : 'dispositivo',
+    mensaje: 'Yalisto: memoria, contexto, análisis personal, voz natural, anticipación y ejecución.',
   });
 });
 
@@ -31,9 +33,10 @@ app.get('/health', (req, res) => {
   res.json({
     ok: true,
     servicio: 'yalisto-backend',
-    version: '0.6.0',
+    version: '0.7.0',
     cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual' : 'local-contextual',
     modelo: process.env.OPENAI_API_KEY ? (process.env.OPENAI_MODEL || 'gpt-5.6-luna') : null,
+    voz: process.env.OPENAI_API_KEY ? (process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts') : null,
     timestamp: new Date().toISOString(),
   });
 });
@@ -45,6 +48,7 @@ app.use('/api/asistente', asistenteRouter);
 app.use('/api/vida', vidaRouter);
 app.use('/api/personalizacion', personalizacionRouter);
 app.use('/api/analisis', analisisRouter);
+app.use('/api/voz', vozRouter);
 
 app.use((err, req, res, next) => {
   console.error(err);
