@@ -13,6 +13,7 @@ const vozRouter = require('./routes/voz');
 const legalRouter = require('./routes/legal');
 const authRouter = require('./routes/auth');
 const publicRouter = require('./routes/public');
+const reportesRouter = require('./routes/reportes');
 const auth = require('./auth');
 
 const app = express();
@@ -26,12 +27,13 @@ app.get('/', (req, res) => {
   res.json({
     ok: true,
     servicio: 'yalisto-backend',
-    version: '1.2.0',
+    version: '1.2.1',
     producto: 'agente-personal-sombra-digital',
     cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual-conversacional' : 'local-contextual',
     voz: process.env.OPENAI_API_KEY ? 'natural-openai-tts' : 'dispositivo',
     privacidad: 'consentimiento-previo-y-eliminacion-de-cuenta',
-    seguridad: 'sesiones-opacas-por-dispositivo',
+    seguridad: 'sesiones-opacas-y-password-scrypt',
+    reportes_ia: 'habilitados-en-app',
     presencia: 'sombra-viva-con-modo-descanso',
     mensaje: 'Yalisto: memoria, contexto, conversación, privacidad, seguridad, anticipación y ejecución.',
   });
@@ -41,7 +43,7 @@ app.get('/health', (req, res) => {
   res.json({
     ok: true,
     servicio: 'yalisto-backend',
-    version: '1.2.0',
+    version: '1.2.1',
     cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual-conversacional' : 'local-contextual',
     modelo: process.env.OPENAI_API_KEY ? (process.env.OPENAI_MODEL || 'gpt-5.6-luna') : null,
     voz: process.env.OPENAI_API_KEY ? (process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts') : null,
@@ -52,10 +54,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Ciclo de sesión: estas rutas validan por sí mismas cuando corresponde.
 app.use('/api/auth', authRouter);
 
-// Registro inicial y documentos legales deben poder consultarse antes de tener sesión.
 app.use('/api', (req,res,next) => {
   const publicRegistration = req.method === 'POST' && req.path === '/usuarios';
   const publicLegalDocs = req.method === 'GET' && req.path === '/legal/documentos';
@@ -73,6 +73,7 @@ app.use('/api/personalizacion', personalizacionRouter);
 app.use('/api/analisis', analisisRouter);
 app.use('/api/voz', vozRouter);
 app.use('/api/legal', legalRouter);
+app.use('/api/reportes', reportesRouter);
 
 app.use((err, req, res, next) => {
   console.error(err);
