@@ -7,13 +7,20 @@ const esc=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'
 const limpio=(s='')=>String(s).replace(/^#{1,6}\s+/gm,'').replace(/\*\*/g,'');
 
 function layout(titulo, contenido) {
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(titulo)} · Yalisto</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f6eeda;color:#1d2638;margin:0}main{max-width:820px;margin:auto;padding:40px 22px 70px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}.y{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#c91f2c;color:white;font-weight:900;font-size:22px}h1{font-size:30px;margin:0 0 8px}h2{margin-top:30px}p,li{line-height:1.65}.card{background:#fffaf0;border:1px solid #ddd3c1;border-radius:18px;padding:20px;margin:18px 0}.muted{color:#657080}.warn{color:#a11924;font-weight:700}a{color:#a11924}input,textarea{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cfc6b7;border-radius:10px;margin:6px 0 12px;font:inherit}button{background:#1d2638;color:white;border:0;border-radius:999px;padding:12px 18px;font-weight:800;cursor:pointer}.foot{font-size:13px;color:#657080;margin-top:35px}</style></head><body><main><div class="brand"><div class="y">Y</div><div><strong>Yalisto</strong><div class="muted">Tu sombra digital</div></div></div>${contenido}<div class="foot">Yalisto · Colombia · <a href="/privacy">Privacidad</a> · <a href="/terms">Términos</a> · <a href="/delete-account">Eliminar cuenta</a></div></main></body></html>`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(titulo)} · Yalisto</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f6eeda;color:#1d2638;margin:0}main{max-width:820px;margin:auto;padding:40px 22px 70px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}.y{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#c91f2c;color:white;font-weight:900;font-size:22px}h1{font-size:30px;margin:0 0 8px}h2{margin-top:30px}p,li{line-height:1.65}.card{background:#fffaf0;border:1px solid #ddd3c1;border-radius:18px;padding:20px;margin:18px 0}.muted{color:#657080}.warn{color:#a11924;font-weight:700}a{color:#a11924}input,textarea{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cfc6b7;border-radius:10px;margin:6px 0 12px;font:inherit}button{background:#1d2638;color:white;border:0;border-radius:999px;padding:12px 18px;font-weight:800;cursor:pointer}.foot{font-size:13px;color:#657080;margin-top:35px}</style></head><body><main><div class="brand"><div class="y">Y</div><div><strong>Yalisto</strong><div class="muted">Tu sombra digital</div></div></div>${contenido}<div class="foot">Yalisto · Colombia · <a href="/support">Soporte</a> · <a href="/privacy">Privacidad</a> · <a href="/terms">Términos</a> · <a href="/delete-account">Eliminar cuenta</a></div></main></body></html>`;
 }
 
 async function doc(codigo) {
   const docs=await legal.documentosVigentes('CO');
   return docs.find(d=>d.codigo===codigo) || null;
 }
+
+router.get('/support',(req,res)=>{
+  const op=legal.operadorLegal();
+  const soporte=op.canal_soporte || op.correo_privacidad || '';
+  const contacto=soporte ? `<p><strong>Correo de soporte:</strong> <a href="mailto:${esc(soporte)}">${esc(soporte)}</a></p>` : '<p class="warn">El correo público de soporte debe configurarse antes del lanzamiento comercial.</p>';
+  res.type('html').send(layout('Soporte',`<h1>Soporte de Yalisto</h1><p>¿Tienes un problema con tu cuenta, Misiones, Agenda, Memoria, Bóveda, voz o alguna respuesta de Yalisto? Este es el canal oficial de soporte de la aplicación.</p><div class="card">${contacto}<p><strong>Versión pública inicial:</strong> 1.0.0</p><p><strong>Disponibilidad inicial:</strong> Colombia</p></div><h2>Privacidad y cuenta</h2><p>Para solicitudes de protección de datos puedes usar el Centro de Privacidad dentro de Yalisto. Si necesitas eliminar tu cuenta sin abrir la app, usa la página pública de eliminación.</p><p><a href="/delete-account">Eliminar o solicitar eliminación de cuenta</a></p>`));
+});
 
 router.get('/privacy', async(req,res)=>{
   try {
