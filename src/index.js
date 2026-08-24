@@ -22,13 +22,13 @@ app.get('/', (req, res) => {
   res.json({
     ok: true,
     servicio: 'yalisto-backend',
-    version: '1.1.0',
+    version: '1.1.1',
     producto: 'agente-personal-sombra-digital',
     cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual-conversacional-v12' : 'local-contextual-v12',
     voz: process.env.OPENAI_API_KEY ? 'natural-openai-tts' : 'dispositivo',
     privacidad: 'consentimiento-previo-versionado-colombia',
     presencia: 'sombra-viva-con-modo-descanso',
-    experiencia: 'fondos-chat-personalizables-sonido-y-contexto',
+    experiencia: 'fondos-chat-personalizables-sonido-almacenamiento-y-contexto',
     mensaje: 'Yalisto: memoria, contexto, conversación fluida, personalización, voz, privacidad, anticipación y ejecución.',
   });
 });
@@ -37,7 +37,7 @@ app.get('/health', (req, res) => {
   res.json({
     ok: true,
     servicio: 'yalisto-backend',
-    version: '1.1.0',
+    version: '1.1.1',
     cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual-conversacional-v12' : 'local-contextual-v12',
     modelo: process.env.OPENAI_API_KEY ? (process.env.OPENAI_MODEL || 'gpt-5.6-luna') : null,
     voz: process.env.OPENAI_API_KEY ? (process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts') : null,
