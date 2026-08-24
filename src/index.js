@@ -22,13 +22,13 @@ app.get('/', (req, res) => {
   res.json({
     ok: true,
     servicio: 'yalisto-backend',
-    version: '0.9.0',
+    version: '1.0.0',
     producto: 'agente-personal-sombra-digital',
-    cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual' : 'local-contextual',
+    cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual-conversacional-v11' : 'local-contextual-v11',
     voz: process.env.OPENAI_API_KEY ? 'natural-openai-tts' : 'dispositivo',
     privacidad: 'consentimiento-previo-versionado-colombia',
     presencia: 'sombra-viva-con-modo-descanso',
-    mensaje: 'Yalisto: memoria, contexto, conversación viva, voz, privacidad, anticipación y ejecución.',
+    mensaje: 'Yalisto: memoria, contexto, conversación continua, voz, privacidad, anticipación y ejecución.',
   });
 });
 
@@ -36,8 +36,8 @@ app.get('/health', (req, res) => {
   res.json({
     ok: true,
     servicio: 'yalisto-backend',
-    version: '0.9.0',
-    cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual' : 'local-contextual',
+    version: '1.0.0',
+    cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual-conversacional-v11' : 'local-contextual-v11',
     modelo: process.env.OPENAI_API_KEY ? (process.env.OPENAI_MODEL || 'gpt-5.6-luna') : null,
     voz: process.env.OPENAI_API_KEY ? (process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts') : null,
     legal_operador_configurado: Boolean(process.env.LEGAL_ENTITY_NAME && process.env.LEGAL_PRIVACY_EMAIL),
