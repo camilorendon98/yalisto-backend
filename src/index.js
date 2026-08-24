@@ -15,6 +15,7 @@ const authRouter = require('./routes/auth');
 const publicRouter = require('./routes/public');
 const reportesRouter = require('./routes/reportes');
 const auth = require('./auth');
+const moderation = require('./ai/moderation');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,12 +28,12 @@ app.get('/', (req, res) => {
   res.json({
     ok: true,
     servicio: 'yalisto-backend',
-    version: '1.2.1',
+    version: '1.2.2',
     producto: 'agente-personal-sombra-digital',
     cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual-conversacional' : 'local-contextual',
     voz: process.env.OPENAI_API_KEY ? 'natural-openai-tts' : 'dispositivo',
     privacidad: 'consentimiento-previo-y-eliminacion-de-cuenta',
-    seguridad: 'sesiones-opacas-y-password-scrypt',
+    seguridad: 'sesiones-opacas-password-scrypt-y-moderacion-ia',
     reportes_ia: 'habilitados-en-app',
     presencia: 'sombra-viva-con-modo-descanso',
     mensaje: 'Yalisto: memoria, contexto, conversación, privacidad, seguridad, anticipación y ejecución.',
@@ -43,13 +44,15 @@ app.get('/health', (req, res) => {
   res.json({
     ok: true,
     servicio: 'yalisto-backend',
-    version: '1.2.1',
+    version: '1.2.2',
     cerebro: process.env.OPENAI_API_KEY ? 'ia-contextual-conversacional' : 'local-contextual',
     modelo: process.env.OPENAI_API_KEY ? (process.env.OPENAI_MODEL || 'gpt-5.6-luna') : null,
     voz: process.env.OPENAI_API_KEY ? (process.env.OPENAI_TTS_MODEL || 'gpt-4o-mini-tts') : null,
     legal_operador_configurado: Boolean(process.env.LEGAL_ENTITY_NAME && process.env.LEGAL_PRIVACY_EMAIL),
     privacy_url:'/privacy',
+    support_url:'/support',
     deletion_url:'/delete-account',
+    moderation: process.env.OPENAI_API_KEY ? 'omni-moderation-latest' : 'modelo-base-sin-capa-extra',
     timestamp: new Date().toISOString(),
   });
 });
@@ -64,6 +67,7 @@ app.use('/api', (req,res,next) => {
   return auth.middleware(req,res,next);
 });
 
+app.use('/api/asistente/chat', moderation.middlewareChat);
 app.use('/api/usuarios', usuariosRouter);
 app.use('/api/solicitudes', solicitudesRouter);
 app.use('/api/recordatorios', recordatoriosRouter);
