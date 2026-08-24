@@ -6,7 +6,10 @@ const router = express.Router();
 function instruccionesComunes({ idioma, velocidad, expresividad, estado_animo }) {
   const partes = [
     `Habla en el idioma correspondiente al código ${idioma || 'es-CO'}.`,
-    'La prioridad es sonar humano y conversacional: usa pausas cortas, cambios sutiles de ritmo e intonación y evita una lectura mecánica.',
+    'La prioridad es sonar como una conversación humana, no como una lectura. Usa pausas breves y desiguales, variación suave de entonación y ritmo, y evita pronunciar cada frase con la misma cadencia.',
+    'No suenes como locutor, GPS, IVR ni audiolibro. No sobreactúes ni exageres respiraciones.',
+    'En español colombiano, usa una dicción clara y neutra, cercana y cotidiana; no fuerces modismos.',
+    'Las preguntas deben sonar realmente interrogativas y las respuestas cortas deben sentirse espontáneas.',
     'No imites ni suplantes a ninguna persona real.',
   ];
   const v = Number(velocidad) || 1;
@@ -15,11 +18,11 @@ function instruccionesComunes({ idioma, velocidad, expresividad, estado_animo })
   else partes.push('Usa una velocidad conversacional natural.');
 
   const estilos = {
-    suave:'Mantén una expresión suave y calmada.',
-    natural:'Mantén una expresión natural y cotidiana.',
-    expresiva:'Usa más variación emocional e intonación, sin teatralidad.',
-    energico:'Usa energía positiva y ritmo vivo, sin gritar.',
-    sereno:'Usa un tono sereno, estable y tranquilizador.',
+    suave:'Mantén una expresión suave y calmada, con finales de frase naturales.',
+    natural:'Mantén una expresión cotidiana y humana, con pequeñas variaciones de energía.',
+    expresiva:'Usa más intención y variación emocional, sin teatralidad.',
+    energico:'Usa energía positiva y ritmo vivo, sin gritar ni acelerar demasiado.',
+    sereno:'Usa un tono sereno, estable y tranquilizador, sin monotonía.',
   };
   partes.push(estilos[expresividad] || estilos.natural);
 
@@ -36,7 +39,12 @@ function instruccionesComunes({ idioma, velocidad, expresividad, estado_animo })
 }
 
 router.get('/catalogo', (req, res) => {
-  res.json({ voces: VOICE_LIST, motor: process.env.OPENAI_API_KEY ? 'openai-tts' : 'dispositivo' });
+  res.json({
+    voces: VOICE_LIST,
+    motor: process.env.OPENAI_API_KEY ? 'openai-tts' : 'dispositivo',
+    natural_configurada: Boolean(process.env.OPENAI_API_KEY),
+    recomendadas_calidad: ['marin','cedar'],
+  });
 });
 
 router.post('/sintetizar', async (req, res) => {
@@ -68,7 +76,7 @@ router.post('/sintetizar', async (req, res) => {
     if (!respuesta.ok) {
       const detalle = await respuesta.text().catch(() => '');
       console.error('Yalisto TTS:', respuesta.status, detalle.slice(0,500));
-      return res.status(502).json({ error:'no se pudo generar la voz natural', fallback:'dispositivo' });
+      return res.status(502).json({ error:'no se pudo generar la voz natural', fallback:'dispositivo', detalle_servidor:respuesta.status });
     }
 
     const audio = Buffer.from(await respuesta.arrayBuffer()).toString('base64');
