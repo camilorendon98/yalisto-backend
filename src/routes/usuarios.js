@@ -3,6 +3,7 @@ const { nanoid } = require('nanoid');
 const { readDb, writeDb } = require('../db');
 const pg = require('../db-postgres');
 const legal = require('../legal');
+const auth = require('../auth');
 
 const router = express.Router();
 const CONSENTIMIENTOS_OBLIGATORIOS = ['terminos', 'privacidad', 'autorizacion_datos'];
@@ -30,11 +31,9 @@ function validarConsentimientoPrevio(consentimientos = []) {
 }
 
 router.post('/', async (req, res) => {
-  const { nombre, celular, ciudad, correo, permisos, consentimientos = [], legal_meta = {} } = req.body || {};
+  const { nombre, celular, ciudad, correo, permisos, consentimientos = [], legal_meta = {}, dispositivo=null, plataforma=null } = req.body || {};
 
-  if (!nombre || !correo) {
-    return res.status(400).json({ error: 'nombre y correo son obligatorios' });
-  }
+  if (!nombre || !correo) return res.status(400).json({ error: 'nombre y correo son obligatorios' });
 
   const permisosCompletos = {
     notificaciones: true,
@@ -43,7 +42,7 @@ router.post('/', async (req, res) => {
     camara: true,
     ubicacion: true,
     contactos: true,
-    llamadas_sms: true,
+    llamadas_sms: false,
     ...permisos,
   };
 
@@ -51,76 +50,62 @@ router.post('/', async (req, res) => {
     if (pg.habilitado) {
       const existente = await pg.buscarUsuarioPorCorreo(correo);
       if (existente) {
-        let consentimientosGuardados = [];
-        if (Array.isArray(consentimientos) && consentimientos.length) {
-          consentimientosGuardados = await legal.registrarConsentimientos(existente.id, consentimientos, {
-            jurisdiccion: legal_meta.jurisdiccion || 'CO',
-            version_app: legal_meta.version_app || null,
-            plataforma: legal_meta.plataforma || null,
-            locale: legal_meta.locale || null,
-            metodo:'checkbox_onboarding',
-            evidencia:{ origen:'registro_usuario_existente' },
-          });
-        }
-        return res.status(200).json({ usuario: existente, existente: true, consentimientos: consentimientosGuardados });
+        return res.status(409).json({
+          error:'Ya existe una cuenta con ese correo. Si esta cuenta viene de una versión anterior de Yalisto, abre la app actualizada en el mismo dispositivo para asegurarla.',
+          codigo:'CUENTA_YA_EXISTE',
+        });
       }
 
       const problemaLegal = validarConsentimientoPrevio(consentimientos);
       if (problemaLegal) return res.status(400).json(problemaLegal);
 
-      // Primero se verifica la aceptación; solo después se crea el registro de usuario.
       const usuario = await pg.crearUsuario({ nombre, celular, ciudad, correo, permisos: permisosCompletos });
       const consentimientosGuardados = await legal.registrarConsentimientos(usuario.id, consentimientos, {
         jurisdiccion: legal_meta.jurisdiccion || 'CO',
         version_app: legal_meta.version_app || null,
-        plataforma: legal_meta.plataforma || null,
+        plataforma: legal_meta.plataforma || plataforma || null,
         locale: legal_meta.locale || null,
         metodo:'checkbox_onboarding',
         evidencia:{ origen:'registro_usuario', consentimiento_previo:true },
       });
-      return res.status(201).json({ usuario, existente: false, consentimientos: consentimientosGuardados });
+      const sesion = await auth.crearSesion(usuario.id,{dispositivo,plataforma:plataforma || legal_meta.plataforma});
+      return res.status(201).json({ usuario, existente:false, consentimientos:consentimientosGuardados, ...sesion });
     }
 
     const db = readDb();
     const yaExiste = db.usuarios.find((u) => String(u.correo).toLowerCase() === String(correo).toLowerCase());
-    if (yaExiste) return res.status(200).json({ usuario: yaExiste, existente: true });
+    if (yaExiste) return res.status(409).json({ error:'Ya existe una cuenta con ese correo.', codigo:'CUENTA_YA_EXISTE' });
 
     const problemaLegal = validarConsentimientoPrevio(consentimientos);
     if (problemaLegal) return res.status(400).json(problemaLegal);
 
     const usuario = {
-      id: nanoid(10),
-      nombre,
-      celular: celular || null,
-      ciudad: ciudad || null,
-      correo,
-      permisos: permisosCompletos,
-      creado_en: new Date().toISOString(),
+      id: nanoid(10), nombre, celular:celular || null, ciudad:ciudad || null, correo,
+      permisos:permisosCompletos, creado_en:new Date().toISOString(),
     };
-    db.usuarios.push(usuario);
-    writeDb(db);
-    res.status(201).json({ usuario, existente: false, consentimiento_previo: true });
+    db.usuarios.push(usuario); writeDb(db);
+    res.status(201).json({ usuario, existente:false, consentimiento_previo:true });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'no se pudo registrar el usuario' });
+    res.status(500).json({ error:'no se pudo registrar el usuario' });
   }
 });
 
 router.get('/:id', async (req, res) => {
+  if (!req.auth || String(req.auth.usuario_id) !== String(req.params.id)) return res.status(403).json({ error:'cuenta no autorizada' });
   try {
     if (pg.habilitado) {
       const usuario = await pg.buscarUsuarioPorId(req.params.id);
-      if (!usuario) return res.status(404).json({ error: 'usuario no encontrado' });
+      if (!usuario) return res.status(404).json({ error:'usuario no encontrado' });
       return res.json({ usuario });
     }
-
     const db = readDb();
     const usuario = db.usuarios.find((u) => u.id === req.params.id);
-    if (!usuario) return res.status(404).json({ error: 'usuario no encontrado' });
+    if (!usuario) return res.status(404).json({ error:'usuario no encontrado' });
     res.json({ usuario });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'no se pudo consultar el usuario' });
+    res.status(500).json({ error:'no se pudo consultar el usuario' });
   }
 });
 
