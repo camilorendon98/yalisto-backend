@@ -1,8 +1,29 @@
 const crypto = require('crypto');
+const { promisify } = require('util');
 const pg = require('./db-postgres');
+const scryptAsync = promisify(crypto.scrypt);
 
 function hashToken(token='') {
   return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
+
+async function hashPassword(password) {
+  const pwd=String(password||'');
+  if (pwd.length < 8) throw new Error('La contraseña debe tener mínimo 8 caracteres.');
+  const salt=crypto.randomBytes(16);
+  const derived=await scryptAsync(pwd,salt,64);
+  return `scrypt$${salt.toString('base64url')}$${Buffer.from(derived).toString('base64url')}`;
+}
+
+async function verificarPassword(password, almacenado='') {
+  const [alg,salt64,hash64]=String(almacenado||'').split('$');
+  if (alg!=='scrypt'||!salt64||!hash64) return false;
+  try {
+    const salt=Buffer.from(salt64,'base64url');
+    const esperado=Buffer.from(hash64,'base64url');
+    const actual=Buffer.from(await scryptAsync(String(password||''),salt,esperado.length));
+    return esperado.length===actual.length && crypto.timingSafeEqual(esperado,actual);
+  } catch { return false; }
 }
 
 async function crearSesion(usuario_id, meta={}) {
@@ -52,7 +73,6 @@ async function middleware(req,res,next) {
     const sesion = await obtenerSesion(token);
     if (!sesion) return res.status(401).json({ error:'sesión requerida', codigo:'SESION_REQUERIDA' });
     req.auth = { usuario_id:sesion.usuario_id, sesion_id:sesion.sesion_id, token, usuario:sesion };
-
     const bodyId = req.body && req.body.usuario_id ? String(req.body.usuario_id) : null;
     const queryId = req.query && req.query.usuario_id ? String(req.query.usuario_id) : null;
     if ((bodyId && bodyId !== String(sesion.usuario_id)) || (queryId && queryId !== String(sesion.usuario_id))) {
@@ -65,4 +85,4 @@ async function middleware(req,res,next) {
   }
 }
 
-module.exports = { crearSesion, obtenerSesion, revocarSesion, bearer, middleware, hashToken };
+module.exports = { crearSesion, obtenerSesion, revocarSesion, bearer, middleware, hashToken, hashPassword, verificarPassword };
