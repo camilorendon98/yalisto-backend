@@ -11,6 +11,7 @@ function instruccionesComunes({ idioma, velocidad, expresividad, estado_animo })
     'En español colombiano, usa una dicción clara y neutra, cercana y cotidiana; no fuerces modismos.',
     'Las preguntas deben sonar realmente interrogativas y las respuestas cortas deben sentirse espontáneas.',
     'No imites ni suplantes a ninguna persona real.',
+    'Expresa cercanía con una entonación amable y pausas naturales. Respeta la velocidad y el estilo elegidos; evita infantilizar, dramatizar o añadir risas y sonidos afectivos.',
   ];
   const v = Number(velocidad) || 1;
   if (v < 0.9) partes.push('Habla un poco más despacio de lo normal, sin arrastrar las palabras.');

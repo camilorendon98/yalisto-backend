@@ -1,3 +1,5 @@
+const { INSTRUCCIONES_CALIDEZ, respuestaCalidaLocal } = require('./calidez');
+
 const API_URL = 'https://api.openai.com/v1/responses';
 const personalizacion = require('../personalizacion');
 const pg = require('../db-postgres');
@@ -49,6 +51,8 @@ function temaReciente(historial=[]) {
 
 function localConversacional({nombre='', mensaje, historial=[], resumen={}, respuestaBase='', hechos={}}) {
   if (respuestaBase && hechos?.tipo !== 'conversacion') return respuestaBase;
+  const calida = respuestaCalidaLocal({mensaje, historial, resumen});
+  if (calida) return calida;
   const t=normalizar(mensaje);
   const anterior=normalizar(ultimoDistinto(historial,'user',mensaje));
   const ultAsistente=normalizar(ultimoDistinto(historial,'assistant',''));
@@ -170,6 +174,7 @@ async function responderConCerebro({usuario,mensaje,historial=[],resumen={},resp
     instruccionPersonalidad(preferencias?.personalidad_asistente),
     instruccionEstilo(preferencias?.estilo_respuesta),
     instruccionAnimo(animo),
+    INSTRUCCIONES_CALIDEZ,
     preferencias?.modo_descanso ? 'Yalisto está en modo descanso: no hagas intervenciones proactivas, pero responde normalmente si el usuario te habla.' : '',
     'REGLA PRINCIPAL DE DIÁLOGO: cada turno debe mover la conversación hacia adelante. No repitas la misma invitación a hablar, no reinicies el tema y no cierres cada respuesta con una pregunta.',
     'Resuelve referencias implícitas usando los turnos anteriores: “sí”, “eso”, “sigue”, “lo que tú digas”, “él”, “ella”, “esa opción”, “y luego”, “por qué” pertenecen al contexto inmediatamente anterior.',
