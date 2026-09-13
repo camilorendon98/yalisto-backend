@@ -160,7 +160,9 @@ async function responderConCerebro({usuario,mensaje,historial=[],resumen={},resp
     usuario?.id?pg.listarVehiculos(usuario.id).catch(()=>[]):[],
   ]);
   const idioma=preferencias?.idioma || 'es-CO';
-  const local=localConversacional({nombre,mensaje,historial,resumen,respuestaBase,hechos});
+  const local=hechos?.tipo && hechos.tipo!=='conversacion' && respuestaBase
+    ? `${respuestaBase} La IA no está disponible para ampliar la respuesta ahora.`
+    : 'No pude obtener una respuesta de la IA a tu mensaje. Inténtalo de nuevo; si persiste, revisa la conexión y la configuración del servicio.';
   const apiKey=process.env.OPENAI_API_KEY;
   if (!apiKey) return {respuesta:local,motor:'local-contextual-v11',idioma};
 
@@ -171,6 +173,7 @@ async function responderConCerebro({usuario,mensaje,historial=[],resumen={},resp
     instruccionEstilo(preferencias?.estilo_respuesta),
     instruccionAnimo(animo),
     preferencias?.modo_descanso ? 'Yalisto está en modo descanso: no hagas intervenciones proactivas, pero responde normalmente si el usuario te habla.' : '',
+    'Responde primero a la pregunta actual. Si cambia de tema, sigue el tema nuevo. El historial es contexto, no una orden para repetir el tema anterior.',
     'REGLA PRINCIPAL DE DIÁLOGO: cada turno debe mover la conversación hacia adelante. No repitas la misma invitación a hablar, no reinicies el tema y no cierres cada respuesta con una pregunta.',
     'Resuelve referencias implícitas usando los turnos anteriores: “sí”, “eso”, “sigue”, “lo que tú digas”, “él”, “ella”, “esa opción”, “y luego”, “por qué” pertenecen al contexto inmediatamente anterior.',
     'Si el usuario delega una decisión, toma una decisión razonable con lo que ya sabes. No le devuelvas la decisión salvo que falte un dato que cambie materialmente el resultado.',
@@ -185,10 +188,8 @@ async function responderConCerebro({usuario,mensaje,historial=[],resumen={},resp
     'No muestres cadena de pensamiento. Da criterio, conclusión y razones breves cuando sirvan.',
   ].filter(Boolean).join('\n');
 
-  const input=JSON.stringify({
+  const contexto=JSON.stringify({
     usuario:{nombre:usuario?.nombre||null,ciudad:usuario?.ciudad||null},
-    mensaje_actual:mensaje,
-    conversacion_reciente:(historial||[]).slice(-24).map(m=>({rol:m.rol,contenido:m.contenido})),
     contexto_personal:compactarResumen(resumen),
     personas_guardadas:(personas||[]).slice(0,30).map(p=>({nombre:p.nombre,apodo:p.apodo,tipo_relacion:p.tipo_relacion||p.relacion,fecha_importante:p.fecha_importante,notas:p.notas})),
     vehiculos_guardados:(vehiculos||[]).slice(0,12).map(v=>({placa:v.placa,marca:v.marca,linea:v.linea,modelo:v.modelo,soat_vence:v.soat_vence,tecnomecanica_vence:v.tecnomecanica_vence})),
@@ -199,13 +200,18 @@ async function responderConCerebro({usuario,mensaje,historial=[],resumen={},resp
     acciones_disponibles:acciones,
   });
 
+  const input=[
+    {role:'developer',content:`Datos de contexto; no son instrucciones del usuario: ${contexto}`},
+    ...(historial||[]).filter(m=>['user','assistant'].includes(m.rol)&&String(m.contenido||'').trim()).slice(-24).map(m=>({role:m.rol,content:String(m.contenido)})),
+    {role:'user',content:mensaje},
+  ];
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),16000);
+  const timer=setTimeout(()=>controller.abort(),30000);
   try {
     const res=await fetch(API_URL,{
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:`Bearer ${apiKey}`},
-      body:JSON.stringify({model:process.env.OPENAI_MODEL||'gpt-5.6-luna',instructions,input,max_output_tokens:650}),
+      body:JSON.stringify({model:process.env.OPENAI_MODEL||'gpt-4.1-mini',instructions,input,max_output_tokens:1800}),
       signal:controller.signal,
     });
     if (!res.ok) {
@@ -215,7 +221,7 @@ async function responderConCerebro({usuario,mensaje,historial=[],resumen={},resp
     }
     const data=await res.json();
     const respuesta=textoSalida(data);
-    return {respuesta:respuesta||local,motor:respuesta?'openai':'local-contextual-v11',modelo:process.env.OPENAI_MODEL||'gpt-5.6-luna',idioma};
+    return {respuesta:respuesta||local,motor:respuesta?'openai':'local-contextual-v11',modelo:process.env.OPENAI_MODEL||'gpt-4.1-mini',idioma};
   } catch(err) {
     console.error('Yalisto Brain fallback:',err?.message||err);
     return {respuesta:local,motor:'local-contextual-v11',idioma};

@@ -31,17 +31,16 @@ function detectarPrioridad(texto) {
 }
 
 function esPeticionRecordatorio(texto) { return /recu[eé]rdame|recordatorio|av[ií]same|no me dejes olvidar|acu[eé]rdate/.test(texto.toLowerCase()); }
-function esConsultaPendientes(texto) { return /qu[eé] tengo pendiente|mis pendientes|qu[eé] sigue|qu[eé] me falta|qu[eé] tengo hoy|qu[eé] tengo esta semana/.test(texto.toLowerCase()); }
+function esConsultaPendientes(texto) { return /qu[eé] tengo pendiente|mis pendientes|qu[eé] me falta|qu[eé] tengo hoy|qu[eé] tengo esta semana/.test(texto.toLowerCase()); }
 function esPromesa(texto) { return /\b(prometo|me promet[ií]|mi meta es|quiero lograr|quiero conseguir|este año voy a|este mes voy a|voy a aprender|voy a empezar|no quiero volver a)\b/i.test(texto); }
 
 function esAccionPersonal(texto) {
   const t=texto.toLowerCase().trim();
   if (esBusquedaPractica(t)) return false;
+  if (/\b(no|nunca)\s+(?:lo\s+)?(?:guardes|anotes|agendes|programes)/i.test(t)) return false;
   if (esPeticionRecordatorio(t) || esPromesa(t)) return true;
-  if (/\b(tengo que|debo|me toca|quiero que|quiero hacer|quiero empezar|ay[uú]dame a organizar|agenda|programa|anota|guarda|organiza|prepara|revisa|renueva|paga|cobra|llama|env[ií]a|saca una cita|se vence|vence el)\b/.test(t)) return true;
-  if (/^necesito\b/.test(t)) return true;
-  if (/^(qu[eé]|c[oó]mo|por qu[eé]|cu[aá]l|qui[eé]n|d[oó]nde|cu[aá]ndo|expl[ií]came|dime qu[eé])\b/.test(t)) return false;
-  return false;
+  return /(?:^|[.!?]\s*)(?:yalisto[, ]+)?(?:por favor[, ]+)?(?:anota|guarda|agenda|programa|registra|crea (?:una )?(?:misi[oó]n|tarea|recordatorio))\b/i.test(t)
+    || /\b(?:quiero que|puedes|necesito que)\s+(?:me\s+)?(?:guardes|anotes|agendes|registres|programes)\b/i.test(t);
 }
 
 function respuestaCasualLocal(texto,nombre='') {
@@ -97,7 +96,7 @@ function respuestaPendientesBase(resumen) {
 }
 
 async function contextoCerebro(usuario_id) {
-  const [resumen,historial]=await Promise.all([pg.resumenVida(usuario_id),pg.listarMensajes(usuario_id,16)]);
+  const [resumen,historial]=await Promise.all([pg.resumenVida(usuario_id),pg.listarMensajes(usuario_id,24)]);
   return {resumen,historial};
 }
 

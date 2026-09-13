@@ -1,9 +1,11 @@
 async function moderarTexto(texto='') {
   const limpio=String(texto||'').trim();
   if(!limpio || !process.env.OPENAI_API_KEY) return {flagged:false,motor:'omitido'};
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),8000);
   try{
     const respuesta=await fetch('https://api.openai.com/v1/moderations',{
-      method:'POST',
+      method:'POST',signal:controller.signal,
       headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},
       body:JSON.stringify({model:'omni-moderation-latest',input:limpio}),
     });
@@ -14,7 +16,7 @@ async function moderarTexto(texto='') {
   }catch(err){
     console.error('Moderation fallback:',err?.message||err);
     return {flagged:false,motor:'error-no-bloqueante'};
-  }
+  } finally { clearTimeout(timer); }
 }
 
 async function middlewareChat(req,res,next){
